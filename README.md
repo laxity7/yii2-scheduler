@@ -15,7 +15,7 @@ a configurable mutex to prevent task overlaps and ensuring that long-running job
 - **Parameter Passing:** Pass parameters to your console commands and callbacks.
 - **Optional Locking:** By default, tasks can overlap. Use the `withoutOverlapping()` method to ensure a task runs only one instance at a time.
 - **Decoupled Architecture:** Uses a `KernelScheduleInterface` to separate the scheduler's logic from your application's task definitions.
-- **Configurable Mutex:** Utilizes any mutex component supported by Yii2 (`FileMutex`, `RedisMutex`, `MysqlMutex`, etc.).
+- **Configurable Mutex:** Utilizes any mutex component supported by Yii2 (`FileMutex`, `redis\Mutex`, `MysqlMutex`, etc.).
 - **Two Execution Modes:** Run as a persistent background worker using **Supervisor** or via a traditional **cron** entry.
 
 ---
@@ -52,7 +52,7 @@ composer require laxity7/yii2-scheduler
             // while executing tasks so only one execution of schedule tasks
             // can be running at a time.
             'mutex' => [
-                'class' => \yii\redis\RedisMutex::class,
+                'class' => \yii\redis\Mutex::class,
             ], 
             
             // OR optionally reference an existing application mutex component,

@@ -62,7 +62,12 @@ class Scheduler extends Component implements BootstrapInterface
 
     private function resolveMutex(): void
     {
-        if (is_string($this->mutex)) {
+        if (class_exists($this->mutex)) {
+            if (!is_subclass_of($this->mutex, Mutex::class)) {
+                throw new InvalidConfigException('Component "mutex" must be an instance of yii\mutex\Mutex or its subclass.');
+            }
+            $this->mutexInstance = Yii::createObject($this->mutex);
+        } elseif (is_string($this->mutex)) {
             $this->mutexInstance = Yii::$app->get($this->mutex);
         } elseif (is_array($this->mutex)) {
             $this->mutexInstance = Yii::createObject($this->mutex);
