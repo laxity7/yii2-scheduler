@@ -8,6 +8,8 @@ use Laxity7\Yii2\Components\Scheduler\Commands\SchedulerController;
 use Laxity7\Yii2\Components\Scheduler\Components\CronExpressionParser;
 use Laxity7\Yii2\Components\Scheduler\Components\Event;
 use Laxity7\Yii2\Components\Scheduler\Components\Schedule;
+use Laxity7\Yii2\Components\Scheduler\Runners\CommandRunnerInterface;
+use Laxity7\Yii2\Components\Scheduler\Runners\ShellCommandRunner;
 use Yii;
 use yii\base\BootstrapInterface;
 use yii\base\Component;
@@ -38,22 +40,24 @@ class Scheduler extends Component implements BootstrapInterface
      * @see Mutex
      */
     public $mutex;
-
     private Mutex $mutexInstance;
-
     private ?Controller $controller = null;
+
+    /**
+     * @var string|array|CommandRunnerInterface The command runner instance or configuration.
+     */
+    public $commandRunner = ShellCommandRunner::class;
 
     public function init(): void
     {
-        parent::init();
         if (empty($this->kernelClass)) {
-            throw new InvalidConfigException('Свойство "kernelClass" должно быть установлено.');
+            throw new InvalidConfigException('The "kernelClass" property must be set.');
         }
         if (!is_subclass_of($this->kernelClass, KernelScheduleInterface::class)) {
-            throw new InvalidConfigException("Класс '{$this->kernelClass}' должен реализовывать " . KernelScheduleInterface::class);
+            throw new InvalidConfigException("The class '{$this->kernelClass}' must implement " . KernelScheduleInterface::class);
         }
-
         $this->resolveMutex();
+        $this->commandRunner = Yii::createObject($this->commandRunner);
     }
 
     private function resolveMutex(): void
@@ -78,36 +82,97 @@ class Scheduler extends Component implements BootstrapInterface
 
     public function run(): void
     {
-        $this->checkController();
-
+        if ($this->controller === null) {
+            throw new InvalidConfigException('The controller must be set before running the scheduler.');
+        }
         $schedule = $this->loadSchedule();
         $parser = new CronExpressionParser();
         $now = new DateTimeImmutable('now', new DateTimeZone(Yii::$app->timeZone));
         $dueEvents = $schedule->dueEvents($parser, $now);
-
         if (empty($dueEvents)) {
-            $this->controller->stdout('No scheduled events due at this time: ' . $now->format('Y-m-d H:i') . "\n", Console::FG_GREY);
+            $this->controller->stdout("No scheduled commands are due to run at " . $now->format('Y-m-d H:i') . "\n", Console::FG_GREY);
 
             return;
         }
-
         foreach ($dueEvents as $event) {
-            $this->runEvent($event);
+            $this->spawnEvent($event);
         }
+    }
+
+    private function spawnEvent(Event $event): void
+    {
+        $description = $event->getSummaryForDisplay();
+        $this->controller->stdout("Spawning: [{$description}]\n", Console::FG_CYAN);
+
+        $yiiPath = Yii::getAlias('@app/yii');
+        $taskIdentifier = base64_encode($description);
+
+        $command = PHP_BINARY . " {$yiiPath} scheduler/execute " . escapeshellarg($taskIdentifier);
+
+        $this->commandRunner->runInBackground($command);
     }
 
     public function listen(): void
     {
         $this->checkController();
 
-        $this->controller->stdout('Planned tasks scheduler started. Waiting for events...' . "\n", Console::FG_GREEN);
+        $this->controller->stdout("Scheduler is running in daemon mode...\n", Console::FG_GREEN);
         while (true) {
             Yii::getLogger()->flush(true);
             if (Yii::$app->has('db', true)) {
                 Yii::$app->db->close();
             }
             $this->run();
-            sleep(30);
+            $nextRunTime = ceil(microtime(true) / 60) * 60;
+            $sleepSeconds = $nextRunTime - microtime(true);
+            if ($sleepSeconds > 0) {
+                usleep($sleepSeconds * 1000000);
+            }
+        }
+    }
+
+    /**
+     * Finds and runs a single task by its identifier.
+     * This method is executed inside the spawned background process.
+     *
+     * @param string $taskIdentifier
+     */
+    public function runSingleTaskByIdentifier(string $taskIdentifier): void
+    {
+        $schedule = $this->loadSchedule();
+        $event = null;
+
+        foreach ($schedule->getEvents() as $e) {
+            if ($e->getSummaryForDisplay() === $taskIdentifier) {
+                $event = $e;
+                break;
+            }
+        }
+
+        if ($event === null) {
+            Yii::error("Could not find task with identifier: {$taskIdentifier}", 'scheduler');
+
+            return;
+        }
+
+        $lockName = 'scheduler-' . preg_replace('/[^A-Za-z0-9\-_]/', '', $taskIdentifier);
+
+        if ($event->withoutOverlapping && !$this->mutexInstance->acquire($lockName)) {
+            Yii::info("Execution of [{$taskIdentifier}] skipped, already running.", 'scheduler');
+
+            return;
+        }
+
+        try {
+            $dummyController = new Controller('dummy', Yii::$app);
+            $event->run($dummyController);
+            Yii::info("Task [{$taskIdentifier}] executed successfully.", 'scheduler');
+        } catch (\Throwable $e) {
+            Yii::error("Task '{$taskIdentifier}' failed: " . $e->getMessage() . "\n" . $e->getTraceAsString(), 'scheduler');
+        } finally {
+            if ($event->withoutOverlapping) {
+                $this->mutexInstance->release($lockName);
+            }
         }
     }
 
@@ -119,37 +184,6 @@ class Scheduler extends Component implements BootstrapInterface
         $kernel->schedule($schedule);
 
         return $schedule;
-    }
-
-    private function runEvent(Event $event): void
-    {
-        $description = $event->getSummaryForDisplay();
-        $lockName = 'scheduler-' . preg_replace('/[^A-Za-z0-9\-_]/', '', $description);
-
-        // Apply mutex only if specified for the task
-        if ($event->withoutOverlapping && !$this->mutexInstance->acquire($lockName)) {
-            $this->controller->stdout("Skipping [{$description}], task is still running.\n", Console::FG_YELLOW);
-
-            return;
-        }
-
-        $this->controller->stdout("Running: [{$description}]... ", Console::FG_CYAN);
-        $startTime = microtime(true);
-
-        try {
-            $event->run($this->controller);
-            $runTime = round(microtime(true) - $startTime, 2);
-            $this->controller->stdout("OK ({$runTime}s)\n", Console::FG_GREEN);
-        } catch (\Throwable $e) {
-            $runTime = round(microtime(true) - $startTime, 2);
-            $this->controller->stderr("FAIL ({$runTime}s)\n", Console::FG_RED);
-            Yii::error("Task '{$description}' failed: " . $e->getMessage(), 'scheduler');
-        } finally {
-            // Release mutex only if it was acquired
-            if ($event->withoutOverlapping) {
-                $this->mutexInstance->release($lockName);
-            }
-        }
     }
 
     private function checkController(): void
