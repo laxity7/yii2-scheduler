@@ -56,4 +56,13 @@ class Schedule
             return $event->isDue($parser, $date);
         });
     }
+
+    /**
+     * Returns all registered events.
+     * @return Event[]
+     */
+    public function getEvents(): array
+    {
+        return $this->events;
+    }
 }
