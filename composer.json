@@ -1,0 +1,48 @@
+{
+    "name": "laxity7/yii2-scheduler",
+    "version": "1.0.0",
+    "description": "Yii2 Scheduler is a component for scheduling tasks in Yii2 applications",
+    "license": "MIT",
+    "homepage": "https://github.com/laxity7/yii2-scheduler",
+    "minimum-stability": "stable",
+    "keywords": [
+        "yii2",
+        "scheduler"
+    ],
+    "type": "library",
+    "authors": [
+        {
+            "name": "Vlad Varlamov",
+            "email": "vlad@varlamov.dev",
+            "homepage": "https://varlamov.dev/"
+        }
+    ],
+    "support": {
+        "issues": "https://github.com/laxity7/yii2-scheduler/issues",
+        "source": "https://github.com/laxity7/yii2-scheduler"
+    },
+    "autoload": {
+        "psr-4": {
+            "Laxity7\\Yii2\\Components\\Scheduler\\": "src"
+        }
+    },
+    "autoload-dev": {
+        "psr-4": {
+            "tests\\": "tests/"
+        }
+    },
+    "require": {
+        "php": ">=7.4|>=8.0",
+        "yiisoft/yii2": "^2.0.51"
+    },
+    "require-dev": {
+        "phpunit/phpunit": "^10.5",
+        "yidas/yii2-bower-asset": "^2.0"
+    },
+    "config": {
+        "sort-packages": true,
+        "allow-plugins": {
+            "yiisoft/yii2-composer": true
+        }
+    }
+}
