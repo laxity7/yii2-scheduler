@@ -3,7 +3,6 @@
 namespace tests;
 
 use Laxity7\Yii2\Components\Scheduler\Scheduler;
-use tests\unit\mocks\TestKernel;
 use Yii;
 use yii\helpers\ArrayHelper;
 
@@ -26,8 +25,8 @@ abstract class TestCase extends \PHPUnit\Framework\TestCase
      * Populates Yii::$app with a new application
      * The application will be destroyed on tearDown() automatically.
      *
-     * @param array  $config   The application configuration, if needed
-     * @param string $appClass name of the application class to create
+     * @param array<mixed>                        $config   The application configuration, if needed
+     * @param class-string<\yii\base\Application> $appClass name of the application class to create
      */
     protected function mockApplication(array $config = [], string $appClass = \yii\console\Application::class): void
     {
@@ -35,12 +34,17 @@ abstract class TestCase extends \PHPUnit\Framework\TestCase
             'id'         => 'test-app',
             'basePath'   => __DIR__,
             'vendorPath' => dirname(__DIR__) . '/vendor',
+            'timeZone'   => 'UTC',
             'components' => [
-                'scheduler' => [
+                'scheduler'     => [
                     'class'       => Scheduler::class,
-                    'kernelClass' => TestKernel::class,
+                    'kernelClass' => \tests\unit\mocks\MockScheduleKernel::class,
                 ],
-                'mutex'     => [
+                'mockScheduler' => [
+                    'class'       => \tests\unit\mocks\MockScheduler::class,
+                    'kernelClass' => \tests\unit\mocks\MockScheduleKernel::class,
+                ],
+                'mutex'         => [
                     'class'     => \yii\mutex\FileMutex::class,
                     'mutexPath' => '@runtime/mutex',
                 ],
@@ -53,6 +57,7 @@ abstract class TestCase extends \PHPUnit\Framework\TestCase
      */
     protected function destroyApplication(): void
     {
+        // @phpstan-ignore assign.propertyType
         Yii::$app = null;
     }
 }

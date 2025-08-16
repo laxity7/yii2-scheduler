@@ -3,11 +3,11 @@
 namespace tests\unit\mocks;
 
 use Laxity7\Yii2\Components\Scheduler\Components\Schedule;
-use Laxity7\Yii2\Components\Scheduler\KernelScheduleInterface;
+use Laxity7\Yii2\Components\Scheduler\ScheduleKernelInterface;
 
-class TestKernel implements KernelScheduleInterface
+class MockScheduleKernel implements ScheduleKernelInterface
 {
-    /** @var callable */
+    /** @var callable|null */
     public static $scheduleCallback;
 
     public function schedule(Schedule $schedule): void

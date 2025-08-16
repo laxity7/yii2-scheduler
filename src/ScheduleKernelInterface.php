@@ -4,7 +4,7 @@ namespace Laxity7\Yii2\Components\Scheduler;
 
 use Laxity7\Yii2\Components\Scheduler\Components\Schedule;
 
-interface KernelScheduleInterface
+interface ScheduleKernelInterface
 {
     /**
      * Schedules tasks to be executed periodically.

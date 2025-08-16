@@ -14,7 +14,7 @@ a configurable mutex to prevent task overlaps and ensuring that long-running job
 - **Expressive, Fluent API:** Define schedules with readable methods like `->dailyAt('13:00')`, `->everyFiveMinutes()`, or `->weekly()`.
 - **Parameter Passing:** Pass parameters to your console commands and callbacks.
 - **Optional Locking:** By default, tasks can overlap. Use the `withoutOverlapping()` method to ensure a task runs only one instance at a time.
-- **Decoupled Architecture:** Uses a `KernelScheduleInterface` to separate the scheduler's logic from your application's task definitions.
+- **Decoupled Architecture:** Uses a `ScheduleKernelInterface` to separate the scheduler's logic from your application's task definitions.
 - **Configurable Mutex:** Utilizes any mutex component supported by Yii2 (`FileMutex`, `redis\Mutex`, `MysqlMutex`, etc.).
 - **Two Execution Modes:** Run as a persistent background worker using **Supervisor** or via a traditional **cron** entry.
 
@@ -31,7 +31,7 @@ composer require laxity7/yii2-scheduler
 ## Configuration
 
 1. **Create Kernel:** Create custom `Kernel` class in your application, e.g., `app\schedule\Kernel.php`. This class should implement the
-   `Laxity7\Yii2\Components\Scheduler\KernelScheduleInterface`.
+   `Laxity7\Yii2\Components\Scheduler\ScheduleKernelInterface`.
 
 ```php
 2. **Configure Component:** Register the `scheduler` in your `config/console.php`.
@@ -72,7 +72,7 @@ Define all tasks in your `app\schedule\Kernel` class within the `schedule()` met
 namespace app\schedule;
 
 use app\services\ReportService; // Assuming such a service exists
-use Laxity7\Yii2\Components\Scheduler\KernelScheduleInterface;
+use Laxity7\Yii2\Components\Scheduler\ScheduleKernelInterface;
 use Laxity7\Yii2\Components\Scheduler\Schedule;
 use Yii;
 
