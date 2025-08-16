@@ -30,13 +30,19 @@
             "tests\\": "tests/"
         }
     },
+    "scripts": {
+        "phpunit": "vendor/bin/phpunit --configuration=phpunit.xml",
+        "phpstan": "vendor/bin/phpstan analyse --configuration=phpstan.neon --memory-limit 1G"
+    },
     "require": {
         "php": ">=7.4|>=8.0",
         "yiisoft/yii2": "^2.0.51"
     },
     "require-dev": {
         "phpunit/phpunit": "^10.5",
-        "yidas/yii2-bower-asset": "^2.0"
+        "yidas/yii2-bower-asset": "^2.0",
+        "phpstan/phpstan": "^2.0",
+        "phpstan/phpstan-strict-rules": "^2.0"
     },
     "config": {
         "sort-packages": true,

@@ -3,28 +3,28 @@
 namespace Laxity7\Yii2\Components\Scheduler\Components;
 
 /**
- * Contains a list of scheduled events and provides methods to add commands or callbacks.
+ * Contains a list of scheduled tasks and provides methods to add commands or callbacks.
  */
 class Schedule
 {
     /**
-     * @var Event[] List of scheduled events.
+     * @var Task[] List of scheduled tasks.
      */
-    private array $events = [];
+    private array $tasks = [];
 
     /**
      * Adds a console command to the schedule.
      *
      * @param string $command e.g., 'cache/flush-all'
      *
-     * @return Event
+     * @return Task
      */
-    public function command(string $command): Event
+    public function command(string $command): Task
     {
-        $event = new Event($command);
-        $this->events[] = $event;
+        $task = new Task($command);
+        $this->tasks[] = $task;
 
-        return $event;
+        return $task;
     }
 
     /**
@@ -32,14 +32,14 @@ class Schedule
      *
      * @param callable $callback
      *
-     * @return Event
+     * @return Task
      */
-    public function call(callable $callback): Event
+    public function call(callable $callback): Task
     {
-        $event = new Event($callback);
-        $this->events[] = $event;
+        $task = new Task($callback);
+        $this->tasks[] = $task;
 
-        return $event;
+        return $task;
     }
 
     /**
@@ -48,21 +48,21 @@ class Schedule
      * @param CronExpressionParser $parser
      * @param \DateTimeInterface   $date
      *
-     * @return Event[]
+     * @return Task[]
      */
-    public function dueEvents(CronExpressionParser $parser, \DateTimeInterface $date): array
+    public function dueTask(CronExpressionParser $parser, \DateTimeInterface $date): array
     {
-        return array_filter($this->events, function (Event $event) use ($parser, $date) {
-            return $event->isDue($parser, $date);
+        return array_filter($this->tasks, function (Task $task) use ($parser, $date) {
+            return $task->isDue($parser, $date);
         });
     }
 
     /**
-     * Returns all registered events.
-     * @return Event[]
+     * Returns all registered tasks.
+     * @return Task[]
      */
-    public function getEvents(): array
+    public function getTasks(): array
     {
-        return $this->events;
+        return $this->tasks;
     }
 }

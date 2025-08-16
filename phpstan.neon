@@ -1,0 +1,21 @@
+includes:
+  - vendor/phpstan/phpstan-strict-rules/rules.neon
+parameters:
+  level: 8
+  parallel:
+    maximumNumberOfProcesses: 100
+    minimumNumberOfJobsPerProcess: 10
+
+  tmpDir: .phpstancache
+
+  bootstrapFiles:
+    - vendor/autoload.php
+    - vendor/yiisoft/yii2/Yii.php
+
+  treatPhpDocTypesAsCertain: false
+
+  excludePaths:
+    - vendor
+  paths:
+    - src
+    - tests
