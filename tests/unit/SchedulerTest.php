@@ -4,6 +4,7 @@ namespace tests\unit;
 
 use Laxity7\Yii2\Components\Scheduler\Scheduler;
 use tests\TestCase;
+use tests\unit\mocks\MockCommandController;
 use tests\unit\mocks\MockCommandRunner;
 use tests\unit\mocks\MockScheduleKernel;
 use Yii;
@@ -16,6 +17,8 @@ class SchedulerTest extends TestCase
         parent::setUp();
         $this->mockApplication();
         MockScheduleKernel::$scheduleCallback = null;
+        MockCommandController::$actionIndexCalled = false;
+        MockCommandController::$actionParamsCalledWith = [];
     }
 
     /**
@@ -42,7 +45,6 @@ class SchedulerTest extends TestCase
             'kernelClass'   => MockScheduleKernel::class,
             'commandRunner' => $mockRunner,
         ]);
-
         $scheduler->setController(new Controller('test', Yii::$app));
         $scheduler->run();
 
@@ -78,6 +80,32 @@ class SchedulerTest extends TestCase
         self::assertTrue($wasCalled);
     }
 
+    /**
+     * Tests that a command with a slash in its name (e.g., 'controller/action') is executed correctly.
+     */
+    public function testRunSingleTaskExecutesCommandWithSlash(): void
+    {
+        $this->mockApplication([
+            'controllerMap' => [
+                'mock-command' => MockCommandController::class,
+            ],
+        ]);
+        MockScheduleKernel::$scheduleCallback = function ($schedule) {
+            $schedule->command('mock-command/index')->withParameters(['final', 42])->everyMinute();
+        };
+
+        /** @var Scheduler $scheduler */
+        $scheduler = Yii::$app->get('scheduler');
+        $schedule = $scheduler->getSchedule();
+        $tasks = $schedule->getTasks();
+        $identifier = $tasks[0]->getName();
+
+        $scheduler->runSingleTaskByIdentifier($identifier);
+
+        self::assertTrue(MockCommandController::$actionIndexCalled);
+        self::assertEquals(['param1' => 'final', 'param2' => 42], MockCommandController::$actionParamsCalledWith);
+    }
+
     public function testRunSingleTaskWithMutex(): void
     {
         $wasCalled = false;
@@ -95,17 +123,13 @@ class SchedulerTest extends TestCase
         $lockName = 'scheduler-' . preg_replace('/[^A-Za-z0-9\-_:]/', '', $identifier);
         /** @var \yii\mutex\Mutex $mutex */
         $mutex = Yii::$app->get('mutex');
-
         // Acquire lock to simulate running process
         self::assertTrue($mutex->acquire($lockName));
-
         // This should fail to run the task
         $scheduler->runSingleTaskByIdentifier($identifier);
         self::assertFalse($wasCalled);
-
         // Release lock
         $mutex->release($lockName);
-
         // This should now succeed
         $scheduler->runSingleTaskByIdentifier($identifier);
         // @phpstan-ignore staticMethod.impossibleType

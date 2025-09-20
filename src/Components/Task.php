@@ -41,7 +41,7 @@ class Task
     {
         if ($this->command !== null) {
             // For commands, parameters are passed as the second argument to runAction
-            $consoleController->runAction(str_replace('/', '-', $this->command), $this->parameters);
+            Yii::$app->runAction($this->command, $this->parameters);
         } elseif ($this->callback !== null) {
             // For callbacks, the container will resolve dependencies and inject parameters
             Yii::$container->invoke($this->callback, $this->parameters);
