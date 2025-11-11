@@ -25,15 +25,36 @@ class SchedulerControllerTest extends TestCase
      */
     public function testActionList(): void
     {
+        // Mock the application timezone
+        Yii::$app->timeZone = 'UTC';
+
         MockScheduleKernel::$scheduleCallback = function ($schedule): void {
+            // Task with default (app) timezone
             $schedule->command('backup/run')->dailyAt('02:30');
+            // Task with specific timezone
+            $schedule->command('backup/run-ny')->dailyAt('09:00')->timeZone('America/New_York');
         };
 
         $controller = new MockSchedulerController('scheduler', Yii::$app);
+
+        // Mock 'now' for consistent 'Next Run Time' calculation
+        // We need to use a consistent "now" to check the output
+        // This is complex to mock without DI, so we will just check for names.
+
         $controller->runAction('list');
 
         self::assertStringContainsString('Scheduled Tasks List', $controller->output);
+
+        // Check default task
         self::assertStringContainsString('yii backup/run', $controller->output);
+        self::assertStringContainsString('(app)', $controller->output);
+
+        // Check timezone-specific task
+        self::assertStringContainsString('yii backup/run-ny', $controller->output);
+        self::assertStringContainsString('America/New_York', $controller->output);
+
+        // Check that 'America/New_York' is not next to '(app)'
+        self::assertStringNotContainsString('(app)             America/New_York', $controller->output);
     }
 
     /**

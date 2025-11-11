@@ -32,6 +32,11 @@ class Scheduler extends Component implements BootstrapInterface
     public string $kernelClass;
 
     /**
+     * @var non-empty-string|null The timezone to use for scheduler operations.
+     * If null, Yii::$app->timeZone will be used.
+     */
+    public ?string $timeZone = null;
+    /**
      * @var class-string<Mutex>|array{class: class-string<Mutex>, ...}|callable|string|null Configuration for the mutex component.
      */
     public $mutex;
@@ -107,8 +112,38 @@ class Scheduler extends Component implements BootstrapInterface
     }
 
     /**
+     * Resolves the effective timezone name.
+     *
+     * @param non-empty-string|null $taskTimeZone
+     *
+     * @return non-empty-string
+     */
+    public function resolveTimeZone(?string $taskTimeZone): string
+    {
+        if ($taskTimeZone !== null && $taskTimeZone !== '') {
+            return $taskTimeZone;
+        }
+
+        if ($this->timeZone !== null && $this->timeZone !== '') {
+            return $this->timeZone;
+        }
+
+        $appTimeZone = Yii::$app->timeZone;
+        if ($appTimeZone !== null && $appTimeZone !== '') {
+            return $appTimeZone;
+        }
+
+        $systemTimeZone = date_default_timezone_get();
+        if ($systemTimeZone !== '') {
+            return $systemTimeZone;
+        }
+
+        // Absolute fallback
+        return 'UTC';
+    }
+
+    /**
      * Loads and returns the schedule object with all registered tasks.
-     * @return Schedule
      */
     public function getSchedule(): Schedule
     {
@@ -149,9 +184,9 @@ class Scheduler extends Component implements BootstrapInterface
         $this->checkController();
         $schedule = $this->loadSchedule();
         $parser = new CronExpressionParser();
-        $now = new DateTimeImmutable('now', new DateTimeZone(Yii::$app->timeZone));
-        $dueTasks = $schedule->dueTask($parser, $now);
-
+        $globalTimeZoneName = $this->resolveTimeZone(null);
+        $now = new DateTimeImmutable('now', new DateTimeZone($globalTimeZoneName));
+        $dueTasks = $schedule->dueTask($parser, $now, $globalTimeZoneName);
         $currentTime = $now->format('Y-m-d H:i:s');
         if ([] === $dueTasks) {
             $this->controller->stdout($currentTime . " No scheduled commands are due to run.\n", Console::FG_GREY);
@@ -168,7 +203,7 @@ class Scheduler extends Component implements BootstrapInterface
     {
         $this->checkController();
         $description = $task->getName();
-        $currentTime = (new DateTimeImmutable('now', new DateTimeZone(Yii::$app->timeZone)))->format('Y-m-d H:i:s');
+        $currentTime = (new DateTimeImmutable('now', new DateTimeZone($this->resolveTimeZone(null))))->format('Y-m-d H:i:s');
         $this->controller->stdout($currentTime . " Spawning: [{$description}]\n", Console::FG_CYAN);
 
         $yiiScript = Yii::getAlias('@app/yii');
@@ -208,8 +243,7 @@ class Scheduler extends Component implements BootstrapInterface
         }
 
         try {
-            $dummyController = new Controller('dummy', Yii::$app);
-            $task->run($dummyController);
+            $task->run();
             Yii::info("Task [{$taskIdentifier}] executed successfully.", 'scheduler');
         } catch (Throwable $e) {
             Yii::error("Task '{$taskIdentifier}' failed: " . $e->getMessage() . "\n" . $e->getTraceAsString(), 'scheduler');

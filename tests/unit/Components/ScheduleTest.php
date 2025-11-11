@@ -23,8 +23,7 @@ class ScheduleTest extends TestCase
 
         $parser = new CronExpressionParser();
         $date = new DateTime('2025-01-01 12:05:00');
-
-        $dueTasks = $schedule->dueTask($parser, $date);
+        $dueTasks = $schedule->dueTask($parser, $date, 'UTC');
 
         self::assertCount(1, $dueTasks);
         self::assertEquals('command1', $dueTasks[0]->command);

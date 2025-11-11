@@ -47,13 +47,14 @@ class Schedule
      *
      * @param CronExpressionParser $parser
      * @param \DateTimeInterface   $date
+     * @param non-empty-string     $globalTimeZoneName
      *
      * @return Task[]
      */
-    public function dueTask(CronExpressionParser $parser, \DateTimeInterface $date): array
+    public function dueTask(CronExpressionParser $parser, \DateTimeInterface $date, string $globalTimeZoneName): array
     {
-        return array_filter($this->tasks, function (Task $task) use ($parser, $date) {
-            return $task->isDue($parser, $date);
+        return array_filter($this->tasks, function (Task $task) use ($parser, $date, $globalTimeZoneName) {
+            return $task->isDue($parser, $date, $globalTimeZoneName);
         });
     }
 

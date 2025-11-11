@@ -4,7 +4,6 @@ namespace Laxity7\Yii2\Components\Scheduler\Components;
 
 use LogicException;
 use Yii;
-use yii\console\Controller;
 
 /**
  * Represents one planned task
@@ -15,11 +14,14 @@ class Task
     public ?string $command = null;
     /** @var callable|null */
     public $callback = null;
-
     /**
      * @var array<mixed> Parameters to pass to the command or callback.
      */
     public array $parameters = [];
+    /**
+     * @var non-empty-string|null Timezone name for this task, e.g., 'America/New_York'.
+     */
+    public ?string $timeZone = null;
     /**
      * @var bool If true, a mutex will be used to prevent overlapping.
      */
@@ -37,7 +39,7 @@ class Task
         }
     }
 
-    public function run(Controller $consoleController): void
+    public function run(): void
     {
         if ($this->command !== null) {
             // For commands, parameters are passed as the second argument to runAction
@@ -73,9 +75,29 @@ class Task
         return $this;
     }
 
-    public function isDue(CronExpressionParser $parser, \DateTimeInterface $date): bool
+    /**
+     * Sets the timezone for this specific task.
+     *
+     * @param non-empty-string $timeZone
+     *
+     * @return $this
+     */
+    public function timeZone(string $timeZone): self
     {
-        return $parser->isDue($this->expression, $date);
+        $this->timeZone = $timeZone;
+
+        return $this;
+    }
+
+    public function isDue(CronExpressionParser $parser, \DateTimeInterface $date, string $globalTimeZoneName): bool
+    {
+        $effectiveTimeZoneName = $this->timeZone ?? $globalTimeZoneName;
+
+        // Create a new mutable DateTime object from the interface to safely call setTimezone
+        $effectiveDate = new \DateTime($date->format('Y-m-d H:i:s.u'), $date->getTimezone());
+        $effectiveDate->setTimezone(new \DateTimeZone($effectiveTimeZoneName));
+
+        return $parser->isDue($this->expression, $effectiveDate);
     }
 
     public function getName(): string

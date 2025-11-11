@@ -57,14 +57,15 @@ class CronExpressionParser
      *
      * @param string            $expression
      * @param DateTimeImmutable $from
+     * @param non-empty-string  $taskTimeZoneName
      *
      * @return DateTime
      * @throws \Exception
      */
-    public function getNextRunDate(string $expression, DateTimeImmutable $from): DateTime
+    public function getNextRunDate(string $expression, DateTimeImmutable $from, string $taskTimeZoneName): DateTime
     {
         $currentDate = DateTime::createFromImmutable($from);
-
+        $currentDate->setTimezone(new \DateTimeZone($taskTimeZoneName));
         // Start checking from the next minute to avoid returning the current minute if it's due
         $currentDate->modify('+1 minute');
         $currentDate->setTime((int)$currentDate->format('H'), (int)$currentDate->format('i'), 0);

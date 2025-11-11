@@ -13,6 +13,7 @@ a configurable mutex to prevent task overlaps and ensuring that long-running job
 
 - **Expressive, Fluent API:** Define schedules with readable methods like `->dailyAt('13:00')`, `->everyFiveMinutes()`, or `->weekly()`.
 - **Parameter Passing:** Pass parameters to your console commands and callbacks.
+- **Timezone Support:** Run tasks in specific timezones, either globally or on a per-task basis.
 - **Optional Locking:** By default, tasks can overlap. Use the `withoutOverlapping()` method to ensure a task runs only one instance at a time.
 - **Decoupled Architecture:** Uses a `ScheduleKernelInterface` to separate the scheduler's logic from your application's task definitions.
 - **Configurable Mutex:** Utilizes any mutex component supported by Yii2 (`FileMutex`, `redis\Mutex`, `MysqlMutex`, etc.).
@@ -33,7 +34,6 @@ composer require laxity7/yii2-scheduler
 1. **Create Kernel:** Create custom `Kernel` class in your application, e.g., `app\schedule\Kernel.php`. This class should implement the
    `Laxity7\Yii2\Components\Scheduler\ScheduleKernelInterface`.
 
-```php
 2. **Configure Component:** Register the `scheduler` in your `config/console.php`.
 
 ```php
@@ -46,6 +46,10 @@ composer require laxity7/yii2-scheduler
            'class' => \Laxity7\Yii2\Components\Scheduler\Scheduler::class,
            'kernelClass' => \app\schedule\Kernel::class, // Your custom Kernel class
            
+            // Optional: Set a global timezone for all tasks.
+            // If not set, Yii::$app->timeZone will be used.
+            'timeZone' => 'UTC',
+            
             // by default, uses a FileMutex to prevent overlapping tasks.
    
             // optional: define a mutex component to acquire a lock
@@ -73,14 +77,14 @@ namespace app\schedule;
 
 use app\services\ReportService; // Assuming such a service exists
 use Laxity7\Yii2\Components\Scheduler\ScheduleKernelInterface;
-use Laxity7\Yii2\Components\Scheduler\Schedule;
+use Laxity7\Yii2\Components\Scheduler\Components\Schedule;
 use Yii;
 
 /**
  * Class Kernel
  * The central place for defining all scheduled tasks.
  */
-class Kernel implements KernelInterface
+class Kernel implements ScheduleKernelInterface
 {
     /**
      * Defines the application's command schedule.
@@ -116,7 +120,7 @@ class Kernel implements KernelInterface
         })->hourly();
 
         // --- Example 3: Notify Inactive Users ---
-        // Runs a command with parameters to notify users who haven't logged in
+        // Runs a command with parameters to notify users who haven
         // for more than 30 days.
         // The console command would look like: `php yii user/notify --days=30`
         $schedule->command('user/notify')
@@ -130,6 +134,12 @@ class Kernel implements KernelInterface
         $schedule->call([ReportService::class, 'generateDailySummary'])
                  ->dailyAt('00:10')
                  ->withoutOverlapping();
+                 
+        // --- Example 5: Timezone-Specific Task ---
+        // Runs a command daily at 08:00 in a specific timezone.
+        $schedule->command('reports/generate-eu')
+                 ->dailyAt('08:00')
+                 ->timeZone('Europe/Berlin');
     }
 }
 ```
@@ -177,6 +187,32 @@ $schedule->call(function (BillingService $billing, $accountId) {
 ->hourly();
 ```
 
+### Timezone Handling
+
+You can control the timezone for your scheduled tasks at two levels:
+
+1. **Global Timezone (in `config/console.php`):**
+   Set the `timeZone` property on the `scheduler` component. All tasks will use this timezone by default. If this is not set, `Yii::$app->timeZone` is used.
+
+   ```php
+   'scheduler' => [
+       'class' => \Laxity7\Yii2\Components\Scheduler\Scheduler::class,
+       'kernelClass' => \app\schedule\Kernel::class,
+       'timeZone' => 'America/New_York', // All tasks run on this timezone
+   ],
+   ```
+
+2. **Per-Task Timezone:**
+   You can override the global timezone for a specific task using the `timeZone()` method. This is useful for tasks that must run based on a specific region's
+   local time.
+
+   ```php
+   // This task will run at 09:00 London time, regardless of the global setting.
+   $schedule->command('billing/process-uk')
+            ->dailyAt('09:00')
+            ->timeZone('Europe/London');
+   ```
+
 ### Other Examples
 
 ```php
@@ -211,4 +247,26 @@ Add a single cron entry to your server:
 
 ```crontab
 * * * * * cd /path/to/your/project && php yii scheduler/run >> /dev/null 2>&1
+```
+
+---
+
+## Inspecting Schedules
+
+To see a list of all registered tasks, their schedules, and when they are next due to run, use the `scheduler/list` command:
+
+```shell
+php yii scheduler/list
+```
+
+The output will show the cron expression, the task's specific timezone (or `(app)` if using the default), the next run time in your application's local
+timezone, and a human-readable "diff" (e.g., `(in 1h 5m)`).
+
+```
+Scheduled Tasks List
+Expression                TimeZone          Next Run Time                                     Description
+-----------------------   ---------------   -----------------------------------------------   -----------------------------------
+0 2 * * * (app)             2025-11-12 02:00:00 (in 2h 30m)                   yii backup/create
+0 8 * * * Europe/Berlin     2025-11-12 10:00:00 (in 10h 30m)                  yii reports/generate-eu
+* * * * * Europe/London     2025-11-12 00:01:00 (in 31m)                      yii billing/process-uk
 ```
