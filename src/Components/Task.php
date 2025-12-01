@@ -184,13 +184,34 @@ class Task
         return $this->cron('0 0 * * 0');
     }
 
+    public function weeklyOn(int $dayOfWeek = 0, string $time = '00:01'): self
+    {
+        [$hour, $minute] = explode(':', $time);
+
+        return $this->cron(sprintf('%d %d * * %d', $minute, $hour, $dayOfWeek));
+    }
+
     public function monthly(): self
     {
         return $this->cron('0 0 1 * *');
     }
 
+    public function monthlyOn(int $day = 1, string $time = '00:01'): self
+    {
+        [$hour, $minute] = explode(':', $time);
+
+        return $this->cron(sprintf('%d %d %d * *', $minute, $hour, $day));
+    }
+
     public function yearly(): self
     {
         return $this->cron('0 0 1 1 *');
+    }
+
+    public function yearlyOn(int $month = 1, int $day = 1, string $time = '00:01'): self
+    {
+        [$hour, $minute] = explode(':', $time);
+
+        return $this->cron(sprintf('%d %d %d %d *', $minute, $hour, $day, $month));
     }
 }

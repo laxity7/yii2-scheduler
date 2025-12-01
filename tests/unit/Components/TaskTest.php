@@ -108,6 +108,16 @@ class TaskTest extends TestCase
     }
 
     /**
+     * @covers \Laxity7\Yii2\Components\Scheduler\Components\Task::weeklyOn
+     */
+    public function testWeeklyOn(): void
+    {
+        $task = new Task('test/command');
+        $task->weeklyOn(3, '12:15');
+        self::assertEquals('15 12 * * 3', $task->expression);
+    }
+
+    /**
      * @covers \Laxity7\Yii2\Components\Scheduler\Components\Task::monthly
      */
     public function testMonthly(): void
@@ -118,6 +128,20 @@ class TaskTest extends TestCase
     }
 
     /**
+     * @covers \Laxity7\Yii2\Components\Scheduler\Components\Task::monthlyOn
+     */
+    public function testMonthlyOn(): void
+    {
+        $task = new Task('test/command');
+        $task->monthlyOn();
+        self::assertEquals('1 0 1 * *', $task->expression);
+
+        $task = new Task('test/command');
+        $task->monthlyOn(25, '15:30');
+        self::assertEquals('30 15 25 * *', $task->expression);
+    }
+
+    /**
      * @covers \Laxity7\Yii2\Components\Scheduler\Components\Task::yearly
      */
     public function testYearly(): void
@@ -125,6 +149,20 @@ class TaskTest extends TestCase
         $task = new Task('test/command');
         $task->yearly();
         self::assertEquals('0 0 1 1 *', $task->expression);
+    }
+
+    /**
+     * @covers \Laxity7\Yii2\Components\Scheduler\Components\Task::yearlyOn
+     */
+    public function testYearlyOn(): void
+    {
+        $task = new Task('test/command');
+        $task->yearlyOn();
+        self::assertEquals('1 0 1 1 *', $task->expression);
+
+        $task = new Task('test/command');
+        $task->yearlyOn(12, 31, '23:59');
+        self::assertEquals('59 23 31 12 *', $task->expression);
     }
 
     /**
