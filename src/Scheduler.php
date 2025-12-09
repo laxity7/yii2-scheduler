@@ -147,12 +147,7 @@ class Scheduler extends Component implements BootstrapInterface
      */
     public function getSchedule(): Schedule
     {
-        $schedule = new Schedule();
-        /** @var ScheduleKernelInterface $kernel */
-        $kernel = Yii::createObject($this->kernelClass);
-        $kernel->schedule($schedule);
-
-        return $schedule;
+        return $this->loadSchedule();
     }
 
     public function setController(Controller $controller): void
@@ -280,6 +275,8 @@ class Scheduler extends Component implements BootstrapInterface
      */
     private function loadSchedule(): Schedule
     {
+        Yii::$container->clear($this->kernelClass);
+
         $schedule = new Schedule();
         /** @var ScheduleKernelInterface $kernel */
         $kernel = Yii::createObject($this->kernelClass);
