@@ -103,7 +103,12 @@ class Task
     public function getName(): string
     {
         if ($this->command !== null) {
-            return 'yii ' . $this->command;
+            $name = 'yii ' . $this->command;
+            if ($this->parameters !== []) {
+                $name .= ' ' . $this->formatCommandParameters();
+            }
+
+            return $name;
         }
 
         if ($this->callback instanceof \Closure) {
@@ -213,5 +218,22 @@ class Task
         [$hour, $minute] = explode(':', $time);
 
         return $this->cron(sprintf('%d %d %d %d *', $minute, $hour, $day, $month));
+    }
+
+    /**
+     * Formats the task parameters as a command-line string for use in the task name.
+     */
+    private function formatCommandParameters(): string
+    {
+        $parts = [];
+        foreach ($this->parameters as $key => $value) {
+            if (is_int($key)) {
+                $parts[] = (string)$value;
+            } else {
+                $parts[] = "--{$key}={$value}";
+            }
+        }
+
+        return implode(' ', $parts);
     }
 }

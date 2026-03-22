@@ -199,6 +199,21 @@ class TaskTest extends TestCase
         $taskCommand = new Task('test/command');
         self::assertEquals('yii test/command', $taskCommand->getName());
 
+        // Command with positional parameters
+        $taskWithPositionalParams = new Task('test/command');
+        $taskWithPositionalParams->withParameters(['--yesterday']);
+        self::assertEquals('yii test/command --yesterday', $taskWithPositionalParams->getName());
+
+        // Command with named parameters
+        $taskWithNamedParams = new Task('test/command');
+        $taskWithNamedParams->withParameters(['param1' => 'value1', 'param2' => 123]);
+        self::assertEquals('yii test/command --param1=value1 --param2=123', $taskWithNamedParams->getName());
+
+        // Command with mixed parameters
+        $taskWithMixedParams = new Task('test/command');
+        $taskWithMixedParams->withParameters(['final', 42, 'key' => 'val']);
+        self::assertEquals('yii test/command final 42 --key=val', $taskWithMixedParams->getName());
+
         // String callback
         $taskStringCallback = new Task('my_function');
         self::assertEquals('yii my_function', $taskStringCallback->getName());
